@@ -117,10 +117,10 @@ for (id in 1:length(p_list)) {
   ###--- STEP 2. Store the performance metrics ---###
   
   # Total number of Monte Carlo samples
-  B <- 50
+  B <- 10
   set.seed(123456)
   start <- Sys.time()
-  para_Fct <- Metrics_store_ftn(B, p, Sigma_true = Fct)
+  para <- Metrics_store_ftn(B, p, Sigma_true = Fct)
   
   end <- Sys.time()
   time <- end - start
@@ -136,7 +136,7 @@ for (id in 1:length(p_list)) {
 
 
 ###--- Generate summary tables ---###
-para <- para_Fct
+#para <- para_Fct
 round(colMeans(para$com_time),2)
 round(colMeans(para$Ent_mat),2)
 round(colMeans(para$Quad_mat),2)

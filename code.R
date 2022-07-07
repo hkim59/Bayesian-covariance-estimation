@@ -43,12 +43,39 @@ Metrics_store_ftn <- function(B, p, Sigma_true) {
     MCC_mat[b,1] <- MCC_index(SCOV, Uns)
     
     # 2. SPCOV
-    # 2. GLasso
+    # 
     # start <- Sys.time()
     # P <- matrix(1, p, p)
     # diag(P) <- 0
     # # select tuning parameter via 5-fold cross-validation w.r.t entropy loss
     # # SPCOV estimate with final tuning parameter. 
+    # lam_vec <- seq(0.01, 1.01, 0.2) # As noted in the SPCOV paper, CV(\lambda) is relatively flat around the maximum. 
+    # idx <- sample(n, n, replace = F)
+    # CV_lam <- vector(length = length(lam_vec))
+    # 
+    # for (l in 1:length(lam_vec)) {
+    #   lam <- lam_vec[l]
+    #   CV <- vector(length = 5)
+    #   for (i in 1:5) {
+    #     start <- 20*(i-1)+1
+    #     end <- 20*i
+    #     test_idx <- idx[start:end]
+    #     train_idx <- idx[idx != test_idx]
+    #     test_Y <- Y[test_idx,]
+    #     train_Y <- Y[train_idx,]
+    #     test_S <- cov(test_Y)
+    #     train_S <- cov(train_Y)
+    #     mm <- spcov::spcov(Sigma=train_S, # Initial guess for \Sigma
+    #                        S=train_S, # Empirical p.d. covariance matrix.  
+    #                        lambda=lam * P, # Penalty parameter, p x p matrix. Penalizes off-diagonal elements.
+    #                        step.size=100, n.inner.steps=200,
+    #                        thr.inner=0, tol.outer=1e-3, trace=1) # majorize-minimize algorithm tuning parameters
+    #     Sigma_hat <- mm$Sigma
+    #     CV[i] <- CV_loss(Sigma_hat, test_S)
+    #   }
+    #   CV_lam[l] <- mean(CV)
+    # }
+    # lam <- lam_vec[which.max(CV_lam)]
     # lam <- sqrt(log(p)/n)
     # S <- SCOV + 0.001*diag(p)
     # mm <- spcov::spcov(Sigma=S, # Initial guess for \Sigma
@@ -59,6 +86,7 @@ Metrics_store_ftn <- function(B, p, Sigma_true) {
     # SPCOV <- mm$Sigma
     # end <- Sys.time()
     
+    # 2. GLasso
     start <- Sys.time()
     mod_glasso <- glasso::glasso(s=SCOV,rho=sqrt(log(p)/n))
     GLasso <- mod_glasso$wi
@@ -73,8 +101,8 @@ Metrics_store_ftn <- function(B, p, Sigma_true) {
     
     # 3. SBIFM
     start <- Sys.time()
-    #ags <- infinitefactor::linearMGSP(Y, nrun = 10000, burn = 5000, thin = 1)
-    ags <- infinitefactor::linearMGSP(Y, nrun = 2000, burn = 1000, thin = 1)
+    ags <- infinitefactor::linearMGSP(Y, nrun = 10000, burn = 5000, thin = 1)
+    #ags <- infinitefactor::linearMGSP(Y, nrun = 2000, burn = 1000, thin = 1)
     SBIFM <- ags$omegaSamps # posterior \Sigma samples
     numFacts <- ags$numFacts # estimated number of factors
     SBIFM_mean <- ags$covMean # posterior mean of \Sigma, apply(SBIFM, c(1,2), mean)
@@ -107,20 +135,20 @@ Metrics_store_ftn <- function(B, p, Sigma_true) {
     
     # 5. BGLasso
     start <- Sys.time()
-    #bg <- blockGLasso(X=Y,iterations=5000,burnIn=5000)
-    # bg <- blockGLasso(X=Y,iterations=1000,burnIn=100)
-    # BGLasso <- bg$Sigmas
-    # BGLasso_mean <- Reduce("+", BGLasso) / length(BGLasso)
-    # end <- Sys.time()
-    # 
-    # niter = 1000
-    # com_time[b,5] <- as.numeric(end - start)
-    # Frob_mat[b,5] <- Frob_norm(BGLasso_mean, Uns)
-    # Ent_mat[b,5] <- Ent_loss(BGLasso_mean, Uns)
-    # Quad_mat[b,5] <- Quad_loss(BGLasso_mean, Uns)
-    # MCC_mat[b,5] <- MCC_index(BGLasso_mean, Uns)
-    # covrge_diag_mat[b,2] <- {Uns[5,5] >= quantile(sapply(1:niter, function(i) {BGLasso[[i]][5,5]}), 0.025)} & {Uns[5,5] <= quantile(sapply(1:niter, function(i) {BGLasso[[i]][5,5]}), 0.975)}
-    # covrge_offdiag_mat[b,2] <- {Uns[7,8] >= quantile(sapply(1:niter, function(i) {BGLasso[[i]][7,8]}), 0.025)} & {Uns[7,8] <= quantile(sapply(1:niter, function(i) {BGLasso[[i]][7,8]}), 0.975)}
+    bg <- blockGLasso(X=Y,iterations=5000,burnIn=5000)
+    #bg <- blockGLasso(X=Y,iterations=1000,burnIn=100)
+    BGLasso <- bg$Sigmas
+    BGLasso_mean <- Reduce("+", BGLasso) / length(BGLasso)
+    end <- Sys.time()
+
+    niter = 5000
+    com_time[b,5] <- as.numeric(end - start)
+    Frob_mat[b,5] <- Frob_norm(BGLasso_mean, Uns)
+    Ent_mat[b,5] <- Ent_loss(BGLasso_mean, Uns)
+    Quad_mat[b,5] <- Quad_loss(BGLasso_mean, Uns)
+    MCC_mat[b,5] <- MCC_index(BGLasso_mean, Uns)
+    covrge_diag_mat[b,2] <- {Uns[5,5] >= quantile(sapply(1:niter, function(i) {BGLasso[[i]][5,5]}), 0.025)} & {Uns[5,5] <= quantile(sapply(1:niter, function(i) {BGLasso[[i]][5,5]}), 0.975)}
+    covrge_offdiag_mat[b,2] <- {Uns[7,8] >= quantile(sapply(1:niter, function(i) {BGLasso[[i]][7,8]}), 0.025)} & {Uns[7,8] <= quantile(sapply(1:niter, function(i) {BGLasso[[i]][7,8]}), 0.975)}
 
   }
   
