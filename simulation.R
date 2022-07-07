@@ -5,20 +5,14 @@
 ### Goal: Covariance matrix estimation performance comparison under structure misspecification ###
 ###--------------------------------------------------------------------------------------------###
 
-library(MASS)
-library(Matrix)
 library(Rcpp)
 library(RcppArmadillo)
 
-library(infinitefactor) # SBIFM
-library(BayesianGLasso) # BGLasso
-library(spcov) # SPCOV
-library(glasso) # GLASSO
 # JRNS 
-sourceCpp("JRNS/JRNS.cpp")
 sourceCpp("JRNS/StepOmega.cpp")
 
 source("utils.R") # Load performance evaluation metrics
+source("code.R") # Load Metrics_store_ftn for storing paramters
 
 ### Models to compare: 
 # SCOV: Basic sample covariance
@@ -124,58 +118,14 @@ for (id in 1:length(p_list)) {
   
   # Total number of Monte Carlo samples
   B <- 100
-  # Ent_mat 
-  Ent_mat <- rep(list(matrix(NA, nrow = B, ncol = 5)), 5)
-  # Quad_mat
-  Quad_mat <- rep(list(matrix(NA, nrow = B, ncol = 5)), 5)
-  # MCC_mat
-  MCC_mat <- rep(list(matrix(NA, nrow = B, ncol = 5)), 5)
-  # covrge_mat: report for selected indices (5,5) and (7,8); one diagonal term, and one off-diagonal term
-  covrge_diag_mat <- rep(list(matrix(NA, nrow = B, ncol = 2)), 5)
-  covrge_offdiag_mat <- rep(list(matrix(NA, nrow = B, ncol = 2)), 5)
-  
-  ### 1. Uns
   set.seed(123456)
-  for (b in 1:B) {
-    
-    mu <- rep(0, p)
-    Y <- MASS::mvrnorm(n=n, mu = mu, Sigma = Uns)
-    
-    # 1. SCOV
-    SCOV <- cov(Y)
-    
-    # 2. SPCOV
-    P <- matrix(1, p, p)
-    diag(P) <- 0
-    # select tuning parameter via 5-fold cross-validation w.r.t entropy loss
-    # SPCOV estimate with final tuning parameter. 
-    lam <- sqrt(log(p)/n)
-    mm <- spcov::spcov(Sigma=SCOV, # Initial guess for \Sigma
-                       S=SCOV, # Empirical p.d. covariance matrix.  
-                       lambda=lam * P, # Penalty parameter, p x p matrix. Penalizes off-diagonal elements.
-                       step.size=100, n.inner.steps=200,
-                       thr.inner=0, tol.outer=1e-3, trace=1) # majorize-minimize algorithm tuning parameters
-    SPCOV <- mm$Sigma
-    
-    # 3. SBIFM
-    ags <- infinitefactor::linearMGSP(Y, nrun = 10000, burn = 5000, thin = 1)
-    SBIFM <- ags$omegaSamps # posterior \Sigma samples
-    #ags$covMean # posterior mean of \Sigma, apply(SBIFM, c(1,2), mean)
-    numFacts <- ags$numFacts # estimated number of factors
-    
-    # 4. STEP
-    # Initial value of parameters
-    mod_glasso <- glasso::glasso(s=SPCOV,rho=sqrt(log(p)/n))
-    sigma_inv_lasso <- mod_glasso$wi
-    fit_StepOmega <- StepOmega(S=SPCOV,temp=sigma_inv_lasso,nmc=1000,burnin=2000,n=n) # one step of the STEPWISE algorithm
-    STEP <- fit_StepOmega$Omegahat
-    
-    # 6. BGLasso
-    bg <- blockGLasso(X=Y,iterations=5000,burnIn=5000)
-    BGLasso <- bg$Sigmas
+  para_Uns <- Metrics_store_ftn(B, p, Sigma_true = Uns)
+  para_AR1 <- Metrics_store_ftn(B, p, Sigma_true = AR1)
+  para_Exp <- Metrics_store_ftn(B, p, Sigma_true = Exp)
+  para_Blk <- Metrics_store_ftn(B, p, Sigma_true = Blk)
+  para_Fct <- Metrics_store_ftn(B, p, Sigma_true = Fct)
 
-    
-  }
+  
 }
 
 
