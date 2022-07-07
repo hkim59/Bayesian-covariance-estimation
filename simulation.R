@@ -72,7 +72,7 @@ for (id in 1:length(p_list)) {
   idx <- rbinom(p*(p-1)/2, 1, prob = alpha)
   entries[!idx] <- 0
   L[lower.tri(L)] <- entries
-  #Uns <- L%*%t(L) # Generate unstructured \Sigma from Cholesky decomposition.
+  Uns <- L%*%t(L) # Generate unstructured \Sigma from Cholesky decomposition.
   #sum(Uns[lower.tri(Uns)] < 0.01)/(p*(p-1)/2) # Check: Sparsity index = 0.73
   
   # 2. Structured, AR(1). (Wang 2012)
@@ -117,25 +117,34 @@ for (id in 1:length(p_list)) {
   ###--- STEP 2. Store the performance metrics ---###
   
   # Total number of Monte Carlo samples
-  B <- 100
+  B <- 50
   set.seed(123456)
-  para_Uns <- Metrics_store_ftn(B, p, Sigma_true = Uns)
-  para_AR1 <- Metrics_store_ftn(B, p, Sigma_true = AR1)
-  para_Exp <- Metrics_store_ftn(B, p, Sigma_true = Exp)
-  para_Blk <- Metrics_store_ftn(B, p, Sigma_true = Blk)
+  start <- Sys.time()
   para_Fct <- Metrics_store_ftn(B, p, Sigma_true = Fct)
+  
+  end <- Sys.time()
+  time <- end - start
+  
+  # para_Uns <- Metrics_store_ftn(B, p, Sigma_true = Uns)
+  # para_AR1 <- Metrics_store_ftn(B, p, Sigma_true = AR1)
+  # para_Exp <- Metrics_store_ftn(B, p, Sigma_true = Exp)
+  # para_Blk <- Metrics_store_ftn(B, p, Sigma_true = Blk)
+  # para_Fct <- Metrics_store_ftn(B, p, Sigma_true = Fct)
 
   
 }
 
 
-
-
-
-
-
-
-
+###--- Generate summary tables ---###
+para <- para_Fct
+round(colMeans(para$com_time),2)
+round(colMeans(para$Ent_mat),2)
+round(colMeans(para$Quad_mat),2)
+round(colMeans(para$Frob_mat),2)
+round(colMeans(para$MCC_mat),2)
+round(colMeans(para$covrge_diag_mat),2)
+round(colMeans(para$covrge_offdiag_mat),2)
+round(colMeans(para$avg_numFacts),2)
 
 
 
